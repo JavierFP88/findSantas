@@ -1,0 +1,56 @@
+body {
+    background-image: url('../images/carro_de_bombero_no.png');
+    background-size: cover; /* Asegura que la imagen cubra toda el área */
+    background-repeat: no-repeat; /* Evita que la imagen se repita */
+    background-position: center; /* Centra la imagen */
+    background-attachment: fixed; /* Fija la imagen en su lugar */
+    height: 100vh; /* Asegura que el body tome toda la altura del viewport */
+    margin: 0; /* Elimina el margen predeterminado */
+}
+
+a{
+    color: white !important;
+}
+#viewDiv {
+    width: 90%;
+    height: 90%;
+    margin: 0;
+    padding: 0;
+    z-index: 3;
+    position: relative;
+    background-color: rgba(255, 255, 255, 0.8); /* Añadido para visibilidad */
+    border: 1px solid #ccc; /* Opcional: para mejor visibilidad */
+}
+
+.nav-link {
+    color: white !important;
+}
+
+.btn-truck {
+    background: linear-gradient(to right, rgba(8, 202, 8, 0.3), rgba(62, 129, 65, 0.9)) !important;
+}
+
+.btn-truck:hover {
+    background-color: rgba(8, 202, 8) !important;
+}
+
+.nav-pills .nav-link {
+    padding: 0.5rem 1rem;
+}
+
+.nav-pills .nav-link h4 {
+    margin: 0; /* Asegúrate de que no hay margen en los encabezados */
+}
+
+.dropdown-toggle::after {
+    margin-left: 0.5rem; /* Añade un pequeño margen al ícono del dropdown para espaciarlo del texto */
+}
+
+.nav-item a .text-white {
+    font-size: 1.25rem; /* Ajusta el tamaño del texto si es necesario */
+}
+
+.logo {
+    align-self: center; /* Asegura que el logo se alinee verticalmente en el centro */
+    height: 100px; /* Ajusta la altura según tus necesidades */
+}
