@@ -47,9 +47,10 @@ function setupMap() {
         "esri/WebMap",
         "esri/Graphic",
         "esri/geometry/Point",
+        "esri/geometry/Polyline",
         "esri/geometry/projection",
         "esri/geometry/geometryEngine"
-    ], function (MapView, WebMap, Graphic, Point, projection, geometryEngine) {
+    ], function (MapView, WebMap, Graphic, Point, Polyline, projection, geometryEngine) {
         const webmap = new WebMap({
             portalItem: {
                 id: "3c9ffafc712c4a35a4d257db153007f0" // Tu item ID
@@ -209,6 +210,9 @@ function setupMap() {
         
                             view.graphics.add(polygonGraphic); // Agrega solo el polígono seleccionado
                             view.graphics.add(deviceGraphic); // Vuelve a agregar la ubicación del dispositivo
+                            
+                            // Crear polilínea conectando los puntos del truck
+                            createTruckPathPolyline(view, projection);
                         } else {
                             console.log("Tu ubicación NO coincide con ninguno de los polígonos.");
                         }
@@ -219,6 +223,126 @@ function setupMap() {
             } else {
                 console.error("La geolocalización no está soportada en este navegador.");
             }
+        }
+        
+        function createTruckPathPolyline(view, projection) {
+            console.log("Creando polilínea para el recorrido del truck...");
+            
+            // Obtener todos los puntos de las capas de puntos
+            const pointQueryPromises = pointLayers.map((layer) => {
+                return layer.queryFeatures({
+                    where: "1=1", // Obtener todos los puntos
+                    returnGeometry: true,
+                    outFields: ["*"] // Incluir todos los campos
+                });
+            });
+            
+            Promise.all(pointQueryPromises).then((results) => {
+                let allPoints = [];
+                
+                // Consolidar todos los puntos de todas las capas
+                results.forEach((featureSet) => {
+                    featureSet.features.forEach((feature) => {
+                        allPoints.push({
+                            geometry: feature.geometry,
+                            attributes: feature.attributes
+                        });
+                    });
+                });
+                
+                console.log(`Total de puntos encontrados: ${allPoints.length}`);
+                
+                // Filtrar puntos por truck si hay un parámetro truck en la URL
+                if (truckNumber) {
+                    allPoints = allPoints.filter((point) => {
+                        // Buscar campos que puedan contener información del truck
+                        const attrs = point.attributes;
+                        return attrs.truck === truckNumber || 
+                               attrs.Truck === truckNumber ||
+                               attrs.TRUCK === truckNumber ||
+                               attrs.truck_id === truckNumber ||
+                               attrs.TruckID === truckNumber;
+                    });
+                    console.log(`Puntos filtrados para truck ${truckNumber}: ${allPoints.length}`);
+                }
+                
+                if (allPoints.length === 0) {
+                    console.warn("No se encontraron puntos para crear la polilínea.");
+                    return;
+                }
+                
+                // Ordenar puntos por fecha/timestamp (del más viejo al más nuevo)
+                allPoints.sort((a, b) => {
+                    const dateA = getPointDate(a.attributes);
+                    const dateB = getPointDate(b.attributes);
+                    return dateA - dateB;
+                });
+                
+                console.log(`Puntos ordenados cronológicamente: ${allPoints.length}`);
+                
+                // Crear el array de coordenadas para la polilínea
+                const paths = [];
+                allPoints.forEach((point) => {
+                    const geom = point.geometry;
+                    paths.push([geom.x, geom.y]);
+                });
+                
+                // Crear la geometría de la polilínea
+                const polyline = new Polyline({
+                    paths: [paths],
+                    spatialReference: allPoints[0].geometry.spatialReference
+                });
+                
+                // Crear el símbolo para la polilínea
+                const lineSymbol = {
+                    type: "simple-line",
+                    color: [255, 0, 0, 0.8], // Rojo con transparencia
+                    width: 4,
+                    style: "solid"
+                };
+                
+                // Crear el gráfico de la polilínea
+                const polylineGraphic = new Graphic({
+                    geometry: polyline,
+                    symbol: lineSymbol,
+                    popupTemplate: {
+                        title: "Ruta del Truck",
+                        content: `Puntos en la ruta: ${allPoints.length}`
+                    }
+                });
+                
+                // Agregar la polilínea al mapa
+                view.graphics.add(polylineGraphic);
+                
+                console.log("Polilínea agregada al mapa exitosamente.");
+            }).catch((error) => {
+                console.error("Error al consultar puntos para la polilínea:", error);
+            });
+        }
+        
+        function getPointDate(attributes) {
+            // Buscar campos de fecha comunes
+            const dateFields = [
+                'date', 'Date', 'DATE',
+                'timestamp', 'Timestamp', 'TIMESTAMP',
+                'created', 'Created', 'CREATED',
+                'datetime', 'DateTime', 'DATETIME',
+                'time', 'Time', 'TIME',
+                'EditDate', 'CreationDate'
+            ];
+            
+            for (let field of dateFields) {
+                if (attributes[field]) {
+                    const dateValue = new Date(attributes[field]);
+                    if (!isNaN(dateValue.getTime())) {
+                        return dateValue;
+                    }
+                }
+            }
+            
+            // Si no se encuentra campo de fecha, usar un valor por defecto
+            console.warn("No se encontró campo de fecha válido, usando orden actual.");
+            return new Date();
         }
         
         
